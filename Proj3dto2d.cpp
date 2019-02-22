@@ -11,9 +11,10 @@
 #include <unsupported/Eigen/CXX11/Tensor>
 #include "Proj3dto2d.h"
 #include <cmath>
+
 #define WIDTH 3;
-#define DIRECTION Y;
-#define LOCATION 8;
+#define DIRECTION Z;
+#define LOCATION 5;
 
 void projection::Proj3dto2d(const Eigen::TensorMap<Eigen::Tensor<int, 3>> &Map3d,
         Eigen::Tensor<int, 2> &Out, ProjAxis axis,const int &location){
@@ -23,7 +24,7 @@ void projection::Proj3dto2d(const Eigen::TensorMap<Eigen::Tensor<int, 3>> &Map3d
 
     int ceil_width = ceil((this->_width)/2.);
 
-    if((this->_location+ceil_width)>_dims[0] || (this->_location-ceil_width)<0) {
+    if((this->_location+ceil_width)>_dims[0] || (this->_location - ceil_width + 1)<0) {
         throw std::runtime_error("The Projection Slice of 2d Maps is out of bounds");
     }
 
@@ -107,7 +108,7 @@ int main() {
     int ProjLoc = LOCATION;
 
     const Eigen::Tensor<int, 3>::Dimensions& dims = map_3d.dimensions();
-    int dimMap[3];
+    long dimMap[3];
     dimMap[0] = dims[0];
     dimMap[1] = dims[1];
     dimMap[2] = dims[2];

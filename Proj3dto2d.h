@@ -34,12 +34,25 @@ public:
 
     projection(){}
 
-    projection(const int dims[],const int width,ProjAxis axis,const int location)
-            : _maps2d(dims[0], dims[1]),_width(width), _axis(axis),_location(location)
+    projection(const long dims[],const int width, ProjAxis axis,const int location)
+            : _width(width), _axis(axis),_location(location)
     {
         this->_dims[0] = dims[0];
         this->_dims[1] = dims[1];
         this->_dims[2] = dims[2];
+
+        if(axis == X){
+            this->_maps2d._projection2d(dims[1], dims[2]);
+        }
+        else if(axis == Y){
+            this->_maps2d._projection2d(dims[0], dims[2]);
+        }
+        else if(axis == Z){
+            this->_maps2d._projection2d(dims[0], dims[1]);
+        }
+        else{
+            throw std::runtime_error("Define a Proper Axis");
+        }
     }
 
     void maxInSlice(const Eigen::Tensor<int, 3> &ProjectSlice, ProjAxis axis);
