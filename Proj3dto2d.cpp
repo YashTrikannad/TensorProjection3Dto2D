@@ -5,7 +5,6 @@
 // Inputs - Location, Width of Slice, Axis, Map3d
 // Output - 2D Map in the required Axis
 
-
 #include <iostream>
 #include <Eigen/Dense>
 #include <unsupported/Eigen/CXX11/Tensor>
