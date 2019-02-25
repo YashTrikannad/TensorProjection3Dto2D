@@ -12,71 +12,87 @@
 #include "Proj3dto2d.h"
 #include <cmath>
 
-#define WIDTH 3;
-#define DIRECTION Z;
-#define LOCATION 5;
+#define WIDTH 2;
+#define DIRECTION Y;
+#define LOCATION 7;
 
-void projection::Proj3dto2d(const Eigen::TensorMap<Eigen::Tensor<int, 3>> &Map3d,
-        Eigen::Tensor<int, 2> &Out, ProjAxis axis,const int &location){
+Eigen::Tensor<int, 2> Proj3dto2d(const Eigen::TensorMap<Eigen::Tensor<int , 3>> &map_3d, const int& width,
+                                 const ProjAxis& axis, const int& location_along_axis){
 
-    this->_location = location;
-    const Eigen::Tensor<int, 3>::Dimensions& dims = Map3d.dimensions();
+    const Eigen::Tensor<int, 3>::Dimensions& dims = map_3d.dimensions();
+    Eigen::Tensor<int, 2> projection_2d;
 
-    int ceil_width = ceil((this->_width)/2.);
-
-    if((this->_location+ceil_width)>_dims[0] || (this->_location - ceil_width + 1)<0) {
-        throw std::runtime_error("The Projection Slice of 2d Maps is out of bounds");
+    // Defining dimensions of the projection maps
+    if(axis == X) {
+        projection_2d = Eigen::Tensor<int ,2>(dims[1], dims[2]);
+        if((location_along_axis + width) > dims[0]-1 || (location_along_axis - width)<0) {
+            throw std::runtime_error("The Projection Slice of 2d Maps is out of bounds");
+        }
     }
+    else if(axis == Y){
+        projection_2d = Eigen::Tensor<int ,2>(dims[0], dims[2]);
+        if((location_along_axis + width) > dims[1]-1 || (location_along_axis - width)<0) {
+            throw std::runtime_error("The Projection Slice of 2d Maps is out of bounds");
+        }
+    }
+    else if(axis == Z){
+        projection_2d = Eigen::Tensor<int ,2>(dims[0], dims[1]);
+        if((location_along_axis + width) > dims[2]-1 || (location_along_axis - width)<0) {
+            throw std::runtime_error("The Projection Slice of 2d Maps is out of bounds");
+        }
+    }
+    else{
+        throw std::runtime_error("Define a Proper Axis");
+    }
+
+    // Defining Slicing Offsets
+    Eigen::array<int, 3> offsets;
+    Eigen::array<int, 3> extents;
 
     // YZ Plane
     if (axis == X){
-        slice.offsets = {this->_location - (this->_width)/2, 0, 0};
-        slice.extents = {(this->_width)/2 + ceil_width, this->_dims[1], this->_dims[2]};
+        offsets = {location_along_axis - width, 0, 0};
+        extents = {2*width + 1, int(dims[1]), int(dims[2])};
     }
-
-        // XZ Plane3
+    // XZ Plane3
     else if (axis == Y){
-        slice.offsets = {0,  this->_location - (this->_width)/2, 0};
-        slice.extents = {this->_dims[0], (this->_width)/2 + ceil_width, this->_dims[2]};
+        offsets = {0,  location_along_axis - width, 0};
+        extents = {int(dims[0]), 2*width + 1, int(dims[2])};
     }
-        // Z Axis
+    // Z Axis
     else if (axis == Z) {
-        slice.offsets = {0, 0, this->_location - (this->_width)/2};
-        slice.extents = {this->_dims[0], this->_dims[1], (this->_width)/2 + ceil_width};
-    }
-    else{
-        throw std::runtime_error("Axis is not Correct. Mention the Perpendicular Axis as X, Y or Z");
+        offsets = {0, 0, location_along_axis - width};
+        extents = {int(dims[0]), int(dims[1]), 2*width + 1};
     }
 
-    Eigen::Tensor<int, 3> lower_slice = Map3d.slice(slice.offsets, slice.extents);
+    Eigen::Tensor<int, 3> slice = map_3d.slice(offsets, extents);
+    maxInSlice(slice, axis, projection_2d);
 
-    this->maxInSlice(lower_slice, axis);
-
-    Out = _maps2d._projection2d;
+    return projection_2d;
 }
 
-void projection::maxInSlice(const Eigen::Tensor<int, 3> &slice, ProjAxis axis) {
+void maxInSlice(const Eigen::Tensor<int, 3> &slice, const ProjAxis &axis,
+                Eigen::Tensor<int, 2> &projection_2d) {
 
     if (axis == X){
         Eigen::array<int, 1> dims({0});
-        _maps2d._projection2d = slice.maximum(dims);
+        projection_2d = slice.maximum(dims);
     }
     else if (axis == Y){
         Eigen::array<int, 1> dims({1});
-        _maps2d._projection2d = slice.maximum(dims);
+        projection_2d = slice.maximum(dims);
     }
     else if(axis == Z){
         Eigen::array<int, 1> dims({2});
-        _maps2d._projection2d = slice.maximum(dims);
+        projection_2d = slice.maximum(dims);
     }
     else{
         throw std::runtime_error("Axis is not Correct. Mention the Perpendicular Axis as X, Y or Z");
     }
 
     Eigen::array<int, 2> shuffling({1, 0});
-    _maps2d._projection2d = _maps2d._projection2d.shuffle(shuffling).eval();
+    projection_2d = projection_2d.shuffle(shuffling).eval();
 }
-
 
 int main() {
 
@@ -101,25 +117,16 @@ int main() {
     // 3D Map pointed by TensorMap
     Eigen::TensorMap<Eigen::Tensor<int , 3>> map_3d(t_3d.data(), 10, 10, 10);
 ///////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////
 
     // Input Parameters
     int ProjectWidth = WIDTH;
     ProjAxis ProjectDir = DIRECTION;
     int ProjLoc = LOCATION;
 
-    const Eigen::Tensor<int, 3>::Dimensions& dims = map_3d.dimensions();
-    long dimMap[3];
-    dimMap[0] = dims[0];
-    dimMap[1] = dims[1];
-    dimMap[2] = dims[2];
+    Eigen::Tensor<int, 2> projection_2d = Proj3dto2d(map_3d, ProjectWidth, ProjectDir, ProjLoc);
 
-    projection p(dimMap, ProjectWidth, ProjectDir, ProjLoc);
-
-    Eigen::Tensor<int, 2> ProjectionMap2d;
-
-    p.Proj3dto2d(map_3d, ProjectionMap2d, ProjectDir, ProjLoc);
-
-    std::cout << ProjectionMap2d << std::endl;
+    std::cout << projection_2d << std::endl;
 
     return 0;
-    }
+}
